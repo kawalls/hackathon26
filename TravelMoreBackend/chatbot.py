@@ -1,45 +1,40 @@
-import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import request, jsonify, Blueprint
 import anthropic
-app = Flask(__name__)
-CORS(app)
+import os
+
+claude_blueprint = Blueprint("claude", __name__)
+
 claude_api_key = os.getenv("claude_api_key")
 
 claude_client = anthropic.Anthropic(
     api_key=claude_api_key
 )
 
-@app.route('/talkclaude', methods=['POST'])
+@claude_blueprint.route("/talkclaude", methods=["POST"])
 def talkclaude():
     try:
         data = request.get_json()
 
-        if not data or 'prompt' not in data:
+        print("CLAUDE REQUEST:", data)
+
+        if not data or "prompt" not in data:
             return jsonify({"error": "Missing 'prompt' field"}), 400
 
-        prompt = data['prompt']
-        print(f" Sending request to Claude: {prompt}")
+        prompt = data["prompt"]
 
         response = claude_client.messages.create(
-            model="claude-3-opus-20240229",
+            model="claude-3-haiku-20240307",
             max_tokens=500,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
         )
 
-        claude_reply = response.content[0].text  
+        reply = response.content[0].text
 
-        print(f" Claude Response: {claude_reply}")
-
-        return jsonify({"response": claude_reply})
-
-    except anthropic.APIError as e:  
-        print(f" Claude API Error: {e}")
-        return jsonify({"error": f"Claude API error: {str(e)}"}), 500
+        return jsonify({"response": reply})
 
     except Exception as e:
-        print(f" ERROR (Claude Backend): {e}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500  
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        print("Claude error:", e)
+        return jsonify({"error": str(e)}), 500
